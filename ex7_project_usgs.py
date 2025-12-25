@@ -81,4 +81,4 @@ plt.gcf().autofmt_xdate() # 날짜가 겹치지 않게 비스듬히 기울이기
 
 plt.tight_layout()
 plt.show()
-print(">>> 완료!")
+print(">>> 이제 완료!")
