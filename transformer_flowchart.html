@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transformer Architecture for Time Series</title>
+    <style>
+        :root {
+            /* Light Mode Colors */
+            --bg-color: #ffffff;
+            --card-bg: #f8f9fa;
+            --card-border: #e9ecef;
+            --accent: #2563eb; /* Stronger Blue */
+            --accent-glow: rgba(37, 99, 235, 0.2);
+            --text-main: #111827; /* Near Black for sharpness */
+            --text-sub: #4b5563;  /* Dark Gray */
+            --arrow-color: #9ca3af;
+            --box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            --box-shadow-hover: 0 10px 15px rgba(0,0,0,0.1);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+            position: relative;
+        }
+
+        /* Titles */
+        .stage-title {
+            font-size: 1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-sub);
+            margin-bottom: 15px;
+            text-align: center;
+            position: relative;
+        }
+        
+        /* Flow Layout */
+        .flow-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            position: relative;
+            gap: 20px;
+        }
+
+        /* Boxes */
+        .box {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 25px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            box-shadow: var(--box-shadow);
+            transition: all 0.3s ease;
+            position: relative;
+            min-height: 140px;
+            z-index: 2;
+        }
+
+        .box:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--box-shadow-hover);
+            border-color: var(--accent);
+            background: #ffffff;
+        }
+
+        .box h3 {
+            margin: 0 0 12px 0;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .box p {
+            margin: 0;
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .shape-info {
+            margin-top: 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+            background: #eef2ff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: var(--accent);
+            border: 1px solid #dbeafe;
+            font-weight: 600;
+        }
+
+        /* Arrows */
+        .arrow {
+            position: absolute;
+            top: 50%;
+            right: -25px; 
+            transform: translateY(-50%);
+            width: 30px;
+            height: 2px;
+            background: var(--arrow-color);
+            z-index: 1;
+        }
+
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -5px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid var(--arrow-color);
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        
+        /* Vertical connection lines */
+        .v-line {
+            width: 2px;
+            height: 40px;
+            background: var(--arrow-color);
+            margin: 0 auto;
+            position: relative;
+        }
+        .v-line::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: -4px;
+            width: 0;
+            height: 0;
+            border-top: 10px solid var(--arrow-color);
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+        }
+
+        /* Specific Styles for Stages - using left borders for identification */
+        .stage-input { border-left: 5px solid #ef4444; }
+        .stage-embed { border-left: 5px solid #f59e0b; }
+        .stage-encoder { border-left: 5px solid #2563eb; }
+        .stage-output { border-left: 5px solid #10b981; }
+
+        /* Animation Dots for Data Flow */
+        .flow-particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-glow);
+            animation: flowAnimation 3s infinite linear;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%);
+            z-index: 0;
+            opacity: 0;
+        }
+
+        @keyframes flowAnimation {
+            0% { left: 5%; opacity: 1; }
+            20% { left: 20%; opacity: 1; }
+            45% { left: 45%; opacity: 1; }
+            70% { left: 70%; opacity: 1; }
+            95% { left: 95%; opacity: 0; }
+            100% { left: 95%; opacity: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Floating Particle for visualization of flow -->
+        <div style="position: absolute; width: 100%; height: 100%; pointer-events: none;">
+            <div class="flow-particle" style="top: 18%;"></div>
+            <div class="flow-particle" style="top: 18%; animation-delay: 1.5s;"></div>
+        </div>
+
+        <!-- ROW 1: Input & Embedding -->
+        <div>
+            <div class="stage-title">Step 1: 입력 및 임베딩 (Input & Embedding)</div>
+            <div class="flow-row">
+                <div class="box stage-input">
+                    <h3>1. Input Data</h3>
+                    <p>과거 30일간의 유량<br>0~1 사이로 정규화된 값</p>
+                    <div class="shape-info">Shape: [30, 1]</div>
+                    <div class="arrow" style="right: -15px;"></div>
+                </div>
+
+                <div class="box stage-embed">
+                    <h3>2. Linear Projection</h3>
+                    <p>숫자 1개를 64개의<br>특징(d_model)으로 뻥튀기</p>
+                    <div class="shape-info">Shape: [30, 64]</div>
+                    <div class="arrow" style="right: -15px;"></div>
+                </div>
+
+                <div class="box stage-embed">
+                    <h3>3. Positional Encoding</h3>
+                    <p>"시간의 순서" 정보 추가<br>(Day 1과 Day 30 구분)</p>
+                    <div class="shape-info">Shape: [30, 64]</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="v-line"></div>
+
+        <!-- ROW 2: The Encoder Core -->
+        <div>
+            <div class="stage-title">Step 2: 인코딩 (The Brain)</div>
+            <div class="flow-row">
+                <div class="box stage-encoder" style="flex: 2;">
+                    <h3>4. Transformer Encoder</h3>
+                    <p><b>Self-Attention:</b> "30일 전의 홍수가 오늘 수위에 미치는 영향은?"<br>모든 시점 간의 상관관계 계산</p>
+                    <p style="margin-top:8px; font-size:0.9rem; color:#6b7280;">Add & Norm (잔차 연결) + Feed Forward</p>
+                    <div class="shape-info">Shape: [30, 64] -> [30, 64]</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="v-line"></div>
+
+        <!-- ROW 3: Decoding & Output -->
+        <div>
+            <div class="stage-title">Step 3: 디코딩 및 예측 (Decoding & Output)</div>
+            <div class="flow-row">
+                <div class="box stage-output">
+                    <h3>5. Feature Extraction</h3>
+                    <p>가장 마지막 시점(Day 30)의<br>압축된 정보만 추출</p>
+                    <div class="shape-info">Shape: [1, 64]</div>
+                    <div class="arrow" style="right: -15px;"></div>
+                </div>
+
+                <div class="box stage-output">
+                    <h3>6. Linear Decoder</h3>
+                    <p>64개의 특징을<br>3일치 유량 값으로 변환</p>
+                    <div class="shape-info">Shape: [1, 3]</div>
+                    <div class="arrow" style="right: -15px;"></div>
+                </div>
+
+                <div class="box stage-output" style="border-color: #ef4444;">
+                    <h3>7. Final Output</h3>
+                    <p>향후 3일간의 예측 유량<br>(역정규화 필요)</p>
+                    <div class="shape-info">Shape: [3]</div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+</body>
+</html>
