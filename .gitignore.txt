@@ -1,0 +1,14 @@
+# --- PyInstaller가 만든 임시 폴더들 ---
+build/
+dist/
+*.spec
+
+# --- 파이썬이 만드는 캐시 파일 ---
+__pycache__/
+*.pyc
+
+# --- 실행 파일 차단 ---
+*.exe
+
+# --- VS Code 설정 파일 (협업 시 보통 뺍니다) ---
+.vscode/
