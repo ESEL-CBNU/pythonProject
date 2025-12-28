@@ -236,4 +236,4 @@ else:
 # 5. 앱 정보
 # ---------------------------------------------------------
 st.markdown("---")
-st.caption("Developed by AI Assistant for Professor | Powered by PyTorch & Streamlit")
+st.caption("Developed by ESEL of CBNU | Powered by PyTorch & Streamlit")
