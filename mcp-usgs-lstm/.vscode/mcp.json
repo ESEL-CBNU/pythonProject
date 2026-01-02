@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "usgsWaterStage": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["${workspaceFolder}/server_usgs_stage_mcp.py"]
+    }
+  }
+}
