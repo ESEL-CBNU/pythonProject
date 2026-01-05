@@ -1,0 +1,8 @@
+{
+  "servers": {
+    "usgs-forecast": {
+      "command": "${workspaceFolder}\\.venv\\Scripts\\python.exe",
+      "args": ["-u", "${workspaceFolder}\\mcp_server_usgs_forecast.py"]
+    }
+  }
+}

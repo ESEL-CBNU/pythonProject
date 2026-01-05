@@ -1,9 +1,9 @@
 {
   "servers": {
-    "usgsWaterStage": {
+    "usgs-forecast": {
       "type": "stdio",
-      "command": "python",
-      "args": ["${workspaceFolder}/server_usgs_stage_mcp.py"]
+      "command": ".\\.venv\\Scripts\\python.exe",
+      "args": ["-u", ".\\mcp_server_usgs_forecast.py"]
     }
   }
 }
