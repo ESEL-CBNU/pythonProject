@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "usgs-forecast": {
+      "type": "stdio",
+      "command": ".\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-u",
+        ".\\mcp_server_usgs_forecast.py"
+      ],
+      "env": {}
+    }
+  }
+}
