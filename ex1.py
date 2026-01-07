@@ -34,6 +34,27 @@ class ElectricCar(Car):
 e_car = ElectricCar("Nissan Leaf", 2021, 40)
 e_car.display_info()
 
+# 비공개 속성 및 메서드 excercise
+class BankAccount:
+    def __init__(self, account_number, balance):
+        self.__account_number = account_number  # private attribute
+        self.__balance = balance  # private attribute
+    def deposit(self, amount):
+        if amount > 0:
+            self.__balance += amount
+            print(f"Deposited: {amount}. New Balance: {self.__balance}")
+        else:
+            print("Deposit amount must be positive.")
+    def __display_account_info(self):  # private method
+        print(f"Account Number: {self.__account_number}, Balance: {self.__balance}")
+    def show_account_info(self):
+        self.__display_account_info()  # public method to access private method 
+# Testing BankAccount class
+account = BankAccount("123456789", 1000)
+account.deposit(500)
+account.show_account_info()
+
+
 # python exception handling excercise
 def divide_numbers(a, b):
     try:
