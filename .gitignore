@@ -8,3 +8,7 @@ __pycache__/
 # *.py[cod]
 
 *.html
+*.nc
+*.png
+*.kml
+*.kmz
