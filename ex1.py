@@ -1,5 +1,5 @@
 # python grammer excercise to test basic syntax
-data = [10, 25, 30, 45, 50
+data = [10, 25, 30, 45, 50]
 for i in data:
     if i > 0:
         print("임계값 초과:", i)
