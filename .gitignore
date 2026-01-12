@@ -1,0 +1,43 @@
+# Python virtual environments
+.venv/
+venv/
+**/.venv/
+env/
+
+# Python cache
+__pycache__/
+# *.py[cod]
+
+*.html
+*.nc
+*.png
+*.kml
+*.kmz
+
+# --- PyInstaller가 만든 임시 폴더들 ---
+build/
+dist/
+*.spec
+
+# --- 파이썬이 만드는 캐시 파일 ---
+__pycache__/
+*.pyc
+
+# --- 실행 파일 차단 ---
+*.exe
+
+# --- pdf 파일 차단 ---
+*.pdf
+
+# --- VS Code 설정 파일 (협업 시 보통 뺍니다) ---
+.idea/
+.vscode/
+*.swp
+
+models/
+reports/
+
+# 데이터/비밀키 파일 무시 (필요시 수정)
+*.csv
+.env
+*.key

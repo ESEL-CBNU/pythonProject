@@ -1,0 +1,8 @@
+anyio
+numpy
+pandas
+requests
+plotly
+torch
+mcp[cli]
+dataretrieval
