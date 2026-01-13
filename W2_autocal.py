@@ -38,7 +38,7 @@ class W2AutoCalibrator:
             filename = self.control_file
             
         if not os.path.exists(filename):
-            alt_path = r"C:\Users\schun\OneDrive\Python\W2Project\degray\w2_con.npt"
+            alt_path = r"C:\Users\SEWOONG CHUNG\OneDrive\Python\W2Project\Degray\w2_con.npt"
             if os.path.exists(alt_path):
                 filename = alt_path
             
@@ -219,7 +219,7 @@ class W2AutoCalibrator:
             control_filename = self.control_file
         
         if not os.path.exists(control_filename):
-            alt_path = r"C:\Users\schun\OneDrive\Python\W2Project\degray\w2_con.npt"
+            alt_path = r"C:\Users\SEWOONG CHUNG\OneDrive\Python\W2Project\Degray\w2_con.npt"
             if os.path.exists(alt_path):
                 control_filename = alt_path
         
@@ -396,7 +396,7 @@ class W2AutoCalibrator:
             
             # [수정] 경로 자동 보정
             if not os.path.exists(filename):
-                alt_path = r"C:\Users\schun\OneDrive\Python\W2Project\degray\tsr_1_seg15.opt"
+                alt_path = r"C:\Users\SEWOONG CHUNG\OneDrive\Python\W2Project\Degray\tsr_1_seg15.opt"
                 if os.path.exists(alt_path):
                     filename = alt_path
 
@@ -452,7 +452,7 @@ class W2AutoCalibrator:
 # ---------------------------------------------------------
 if __name__ == "__main__":
     # 1. 모델 폴더 지정
-    MODEL_DIR = r"C:\Users\schun\OneDrive\Python\W2Project\degray"
+    MODEL_DIR = r"C:\Users\SEWOONG CHUNG\OneDrive\Python\W2Project\Degray"
     
     # 2. 보정할 매개변수 지정
     TARGET_PARAMS = {

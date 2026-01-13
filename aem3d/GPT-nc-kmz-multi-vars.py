@@ -553,8 +553,8 @@ def build_single_kmz_with_layers(
 # 10) 실행 예시
 # =========================================================
 if __name__ == "__main__":
-    nc_file   = r"c:\dev\pythonProject\aem3d\sheet_top_cyano.nc"
-    bath_file = r"c:\dev\pythonProject\aem3d\bath100_edm1_geo.xyz"
+    nc_file   = r"D:\dev\pythonProject\aem3d\sheet_top_cyano.nc"
+    bath_file = r"D:\dev\pythonProject\aem3d\bath100_edm1_geo.xyz"
 
     GCP = [
         [45, 18, 127.480833, 36.477569],
