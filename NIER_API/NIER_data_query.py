@@ -6,17 +6,27 @@ import pandas as pd
 import streamlit as st
 import altair as alt
 from datetime import datetime
+from pathlib import Path
 
 # =========================
 # App Config
 # =========================
 st.set_page_config(page_title="물환경수질측정망 자료 조회", layout="wide")
 st.title("물환경수질측정망 자료 조회")
-st.caption("지점 검색/다중선택 → API 조회 → 결과 테이블/그래프 → CSV 저장")
+st.caption("지점 선택 조회 → API 조회 → 결과 테이블/시계열 그래프 → CSV 저장")
 
 API_URL = "http://apis.data.go.kr/1480523/WaterQualityService/getWaterMeasuringList"
+DEFAULT_STATIONS_PATH = str(Path(__file__).resolve().parent / "stations.csv")
 
-PARAM_MAP = {"BOD": "itemBod", "COD": "itemCod", "TN": "itemTn", "TP": "itemTp"}
+PARAM_MAP = {
+    "BOD": "itemBod",
+    "COD": "itemCod",
+    "TN": "itemTn",
+    "TP": "itemTp",
+    "수온": "itemTemp",
+    "SS": "itemSs",
+}
+DEPTH_COL_CANDIDATES = ["wmdep", "itemDep", "depth", "dep", "layer"]
 
 UPPER_TO_STD = {
     "PT_NO": "ptNo",
@@ -26,11 +36,20 @@ UPPER_TO_STD = {
     "WMYR": "wmyr",
     "WMOD": "wmod",
     "WMCYMD": "wmcymd",
+    "WMDEP": "wmdep",
+    "ITEM_DEP": "itemDep",
+    "DEPTH": "depth",
+    "DEP": "dep",
+    "LAYER": "layer",
     "ROWNO": "rowno",
     "ITEM_BOD": "itemBod",
     "ITEM_COD": "itemCod",
+    "ITEM_SS": "itemSs",
     "ITEM_TN": "itemTn",
     "ITEM_TP": "itemTp",
+    "ITEM_TEMP": "itemTemp",
+    "ITEM_WT": "itemTemp",
+    "ITEM_WTEMP": "itemTemp",
 }
 
 # =========================
@@ -159,6 +178,13 @@ def safe_sort(df: pd.DataFrame, preferred_cols: list[str]) -> pd.DataFrame:
     return df.sort_values(cols)
 
 
+def find_depth_column(df: pd.DataFrame) -> str | None:
+    for col in DEPTH_COL_CANDIDATES:
+        if col in df.columns:
+            return col
+    return None
+
+
 def build_params(service_key: str, pt_codes: list[str], years: list[int], months: list[int], num_of_rows: int, page_no: int):
     # 가이드: serviceKey(필수), ptNoList/wmyrList/wmodList/resultType 등 [Source](https://www.genspark.ai/api/files/s/Xh06BpN4)
     return {
@@ -197,7 +223,7 @@ with st.sidebar:
 
     service_key = st.text_input("serviceKey (data.go.kr 발급키)", type="password")
 
-    stations_path = st.text_input("stations.csv 경로", value="stations.csv")
+    stations_path = st.text_input("stations.csv 경로", value=DEFAULT_STATIONS_PATH)
 
     st.subheader("기간(월)")
     c1, c2 = st.columns(2)
@@ -205,9 +231,6 @@ with st.sidebar:
         start_yyyymm = st.text_input("시작 (YYYY-MM)", value="2011-01")
     with c2:
         end_yyyymm = st.text_input("끝 (YYYY-MM)", value="2011-12")
-
-    st.subheader("표출 항목")
-    metric = st.selectbox("BOD/COD/TN/TP", list(PARAM_MAP.keys()), index=0)
 
     st.subheader("지점 검색")
     query = st.text_input("지점명/코드 검색어", value="")
@@ -232,27 +255,32 @@ else:
     candidates = stations_df.copy()
 
 candidates = candidates.head(max_candidates).reset_index(drop=True)
-candidates["label"] = candidates["지점명"] + "  (" + candidates["지점코드"] + ")"
+candidates["label"] = candidates["지점명"] + " (" + candidates["지점코드"] + ")"
 
 left, right = st.columns([0.42, 0.58], gap="large")
 
 with left:
-    st.subheader("지점 선택(다중 선택 가능)")
-    selected_labels = st.multiselect("지점", options=candidates["label"].tolist(), default=[])
-    label_to_code = dict(zip(candidates["label"], candidates["지점코드"]))
-    selected_codes = [label_to_code[x] for x in selected_labels] if selected_labels else []
-
-    st.write(f"선택된 지점 수: **{len(selected_codes)}**")
-    if selected_codes:
-        st.code(", ".join(selected_codes), language="text")
+    st.subheader("지점")
+    if candidates.empty:
+        st.warning("검색 조건에 맞는 지점이 없습니다.")
+        selected_codes = []
+    else:
+        options = candidates["label"].tolist()
+        default_index = 0
+        default_match = candidates.index[candidates["지점코드"] == "3008B30"].tolist()
+        if default_match:
+            default_index = int(default_match[0])
+        selected_label = st.selectbox("조회 지점 선택", options=options, index=default_index)
+        selected_code = candidates.loc[candidates["label"] == selected_label, "지점코드"].iloc[0]
+        selected_codes = [selected_code]
+        st.write(f"선택 지점: **{selected_label}**")
 
 with right:
     st.subheader("조회 결과")
 
-    metric_col = PARAM_MAP[metric]
-
     run = st.button("조회 실행", type="primary", disabled=(not service_key or len(selected_codes) == 0))
 
+    # ── 조회 실행: session_state에 데이터 저장 ──────────────────────────
     if run:
         try:
             years, months = month_range(start_yyyymm, end_yyyymm)
@@ -271,57 +299,167 @@ with right:
             st.warning("조회 결과가 없습니다. (지점/기간/키를 확인하세요)")
             st.stop()
 
-        # 안전 정렬: ptNo -> date -> wmyr/wmod -> rowno
         df_sorted = safe_sort(df, ["ptNo", "date", "wmyr", "wmod", "rowno"])
+        depth_col = find_depth_column(df_sorted)
 
-        # 테이블 표시
+        # 수심 컬럼 → 동일 날짜·지점 내 순위로 상/중/하 라벨링
+        if depth_col and depth_col in df_sorted.columns:
+            df_sorted["_dep_num"] = pd.to_numeric(df_sorted[depth_col], errors="coerce")
+            group_keys = [c for c in ["ptNo", "date"] if c in df_sorted.columns]
+            df_sorted["_dep_rank"] = (
+                df_sorted.groupby(group_keys)["_dep_num"]
+                .rank(method="dense", ascending=True)
+            )
+            df_sorted["_dep_max"] = (
+                df_sorted.groupby(group_keys)["_dep_rank"]
+                .transform("max")
+            )
+
+            def _to_label(row):
+                r, m = row["_dep_rank"], row["_dep_max"]
+                if pd.isna(r):
+                    return "미기재"
+                if m == 1:
+                    return "상"
+                elif m == 2:
+                    return "상" if r == 1 else "하"
+                else:  # 3개 이상
+                    if r == 1:
+                        return "상"
+                    elif r == m:
+                        return "하"
+                    else:
+                        return "중"
+
+            df_sorted[depth_col] = df_sorted.apply(_to_label, axis=1)
+            df_sorted.drop(columns=["_dep_num", "_dep_rank", "_dep_max"], inplace=True)
+
+        st.session_state["df"] = df_sorted
+        st.session_state["depth_col"] = depth_col
+        st.session_state["query_key"] = f"{'_'.join(selected_codes)}_{start_yyyymm}_{end_yyyymm}"
+
+    # ── 저장된 데이터가 있으면 필터 UI + 결과 표시 ───────────────────────
+    if "df" in st.session_state:
+        df_sorted = st.session_state["df"]
+        depth_col = st.session_state["depth_col"]
+
+        # ── 필터 선택  ────────────────────────────────────────────────────
+        st.markdown("#### 표시 필터")
+
+        # 지점명 다중 선택
+        avail_pts = df_sorted[["ptNo", "ptNm"]].drop_duplicates()
+        pt_options = (avail_pts["ptNm"] + " (" + avail_pts["ptNo"] + ")").tolist()
+        selected_pts = st.multiselect(
+            "지점 선택 (다중)", options=pt_options, default=pt_options,
+        )
+        selected_pt_nos = [
+            avail_pts.loc[avail_pts["ptNm"] + " (" + avail_pts["ptNo"] + ")" == lbl, "ptNo"].iloc[0]
+            for lbl in selected_pts
+            if lbl in (avail_pts["ptNm"] + " (" + avail_pts["ptNo"] + ")").values
+        ]
+
+        c_metric, c_depth = st.columns(2)
+
+        # 항목 다중 선택
+        metric_options = {label: col for label, col in PARAM_MAP.items() if col in df_sorted.columns}
+        with c_metric:
+            if metric_options:
+                selected_metrics = st.multiselect(
+                    "항목 선택 (다중)", options=list(metric_options.keys()),
+                    default=list(metric_options.keys())[:1],
+                )
+            else:
+                st.warning("수질 항목 컬럼이 응답에 없습니다.")
+                selected_metrics = []
+
+        # 수심 다중 선택
+        with c_depth:
+            if depth_col and depth_col in df_sorted.columns:
+                depth_values = sorted(df_sorted[depth_col].dropna().unique().tolist())
+                selected_depths = st.multiselect(
+                    "수심 선택 (다중)", options=depth_values,
+                    default=depth_values,
+                )
+            else:
+                selected_depths = []
+                st.info("응답에 수심 컬럼이 없습니다.")
+
+        # ── 결과 테이블 ──────────────────────────────────────────────────
         st.markdown("#### 결과 테이블")
-        show_cols = [c for c in ["ptNo", "ptNm", "addr", "wmyr", "wmod", "wmcymd", "itemBod", "itemCod", "itemTn", "itemTp"] if c in df_sorted.columns]
-        st.dataframe(df_sorted[show_cols], use_container_width=True, height=340)
+        show_cols = [c for c in ["ptNo", "ptNm", "wmyr", "wmod", "wmcymd", depth_col,
+                                  "itemBod", "itemCod", "itemTemp", "itemSs", "itemTn", "itemTp"]
+                     if c and c in df_sorted.columns]
+        st.dataframe(df_sorted[show_cols], use_container_width=True, height=300)
 
-        # CSV 저장(다운로드)
+        # ── CSV 다운로드 ─────────────────────────────────────────────────
         st.markdown("#### CSV 저장")
-        # 엑셀에서 한글 깨짐을 줄이기 위해 utf-8-sig 사용
         csv_bytes = df_sorted.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig")
-        filename = f"water_quality_{'_'.join(selected_codes[:3])}{'_etc' if len(selected_codes) > 3 else ''}_{start_yyyymm}_to_{end_yyyymm}.csv"
+        filename = f"water_quality_{st.session_state['query_key']}.csv"
         st.download_button(
             label="조회 결과 CSV 다운로드",
             data=csv_bytes,
             file_name=filename,
-            mime="text/csv"
+            mime="text/csv",
         )
 
-        # 그래프 표시
+        # ── 시계열 그래프 ────────────────────────────────────────────────
         st.markdown("#### 월별 시계열 그래프")
+
+        if not selected_metrics:
+            st.info("항목을 1개 이상 선택하세요.")
+            st.stop()
         if "date" not in df_sorted.columns or df_sorted["date"].notna().sum() == 0:
-            st.error("date 컬럼 생성에 실패하여 그래프를 그릴 수 없습니다. (기간/데이터를 확인하세요)")
+            st.error("date 컬럼이 없어 그래프를 그릴 수 없습니다.")
             st.stop()
 
-        if metric_col not in df_sorted.columns:
-            st.error(f"선택한 항목 컬럼({metric_col})이 응답에 없습니다.")
-            st.stop()
+        # 필터 적용
+        filtered = df_sorted.dropna(subset=["date"]).copy()
+        if selected_pt_nos:
+            filtered = filtered[filtered["ptNo"].isin(selected_pt_nos)]
+        if depth_col and selected_depths:
+            filtered = filtered[filtered[depth_col].isin(selected_depths)]
 
-        g = (
-            df_sorted.dropna(subset=["date"])
-                    .groupby(["ptNo", "ptNm", "date"], as_index=False)[metric_col]
-                    .mean()
+        # 선택된 항목들을 long 형태로 변환
+        value_cols = [metric_options[m] for m in selected_metrics if m in metric_options]
+        group_by = ["date"]
+        if depth_col and selected_depths and depth_col in filtered.columns:
+            group_by.append(depth_col)
+
+        g = filtered.groupby(group_by, as_index=False)[value_cols].mean()
+        g_long = (
+            g.melt(id_vars=group_by, value_vars=value_cols, var_name="item_col", value_name="value")
+            .dropna(subset=["value"])
         )
+        # 컬럼명 → 라벨명 역매핑
+        col_to_label = {v: k for k, v in PARAM_MAP.items()}
+        g_long["항목"] = g_long["item_col"].map(col_to_label).fillna(g_long["item_col"])
+
+        # 범례 컬럼: 수심이 있으면 "항목 @ 수심", 없으면 "항목"
+        if depth_col and depth_col in g_long.columns and len(selected_depths) > 1:
+            g_long["legend"] = g_long["항목"] + " @ " + g_long[depth_col].astype(str)
+        else:
+            g_long["legend"] = g_long["항목"]
+
+        tooltip_extra = ([alt.Tooltip(f"{depth_col}:N", title="수심")]
+                         if depth_col and depth_col in g_long.columns else [])
+
+        if g_long.empty:
+            st.warning("선택한 조건에 해당하는 값이 없습니다.")
+            st.stop()
 
         chart = (
-            alt.Chart(g)
+            alt.Chart(g_long)
             .mark_line(point=True)
             .encode(
                 x=alt.X("date:T", title="월"),
-                y=alt.Y(f"{metric_col}:Q", title=f"{metric}"),
-                color=alt.Color("ptNm:N", title="지점"),
-                tooltip=[
-                    alt.Tooltip("ptNm:N", title="지점"),
-                    alt.Tooltip("ptNo:N", title="코드"),
-                    alt.Tooltip("date:T", title="월"),
-                    alt.Tooltip(f"{metric_col}:Q", title=metric),
-                ],
+                y=alt.Y("value:Q", title="수질값"),
+                color=alt.Color("legend:N", title="항목"),
+                tooltip=[alt.Tooltip("date:T", title="월"),
+                         alt.Tooltip("항목:N", title="항목"),
+                         *tooltip_extra,
+                         alt.Tooltip("value:Q", title="값", format=".3f")],
             )
-            .properties(height=360)
+            .properties(height=400)
             .interactive()
         )
         st.altair_chart(chart, use_container_width=True)
