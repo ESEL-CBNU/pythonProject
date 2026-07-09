@@ -281,7 +281,7 @@ def build_variable_folder(
 
     print(f"[{var_name}] vmin={vmin:.6g}, vmax={vmax:.6g} (mode={mode})")
 
-    cmap = cm.get_cmap(cmap_name)
+    cmap = plt.get_cmap(cmap_name)
     norm = colors.Normalize(vmin=vmin, vmax=vmax, clip=True)
 
     # output dir for this variable
@@ -553,7 +553,7 @@ def build_single_kmz_with_layers(
 # 10) 실행 예시
 # =========================================================
 if __name__ == "__main__":
-    nc_file   = r"D:\dev\pythonProject\aem3d\sheet_top_cyano.nc"
+    nc_file   = r"D:\dev\pythonProject\aem3d\sheet_top_1.nc"
     bath_file = r"D:\dev\pythonProject\aem3d\bath100_edm1_geo.xyz"
 
     GCP = [
